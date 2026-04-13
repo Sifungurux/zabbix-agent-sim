@@ -6,6 +6,7 @@ set -e
 
 # Generate agent config at runtime — written to /tmp because /etc/zabbix is read-only in the image.
 cat > /tmp/zabbix_agent2.conf << EOF
+Server=0.0.0.0/0
 ServerActive=zabbix-zabbix-server.zabbix.svc.cluster.local
 Hostname=${HOSTNAME}
 HostMetadata=zabbix-agent-sim
