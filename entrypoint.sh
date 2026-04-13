@@ -1,8 +1,10 @@
 #!/bin/sh
 set -e
 
-# Generate agent config at runtime — $HOSTNAME is injected by Kubernetes
-# as the pod name via the HOSTNAME env var (fieldRef: metadata.name).
+# HOSTNAME must be set — in Kubernetes this comes from fieldRef: metadata.name.
+: "${HOSTNAME:?HOSTNAME must be set (set fieldRef: metadata.name in the pod spec)}"
+
+# Generate agent config at runtime — written to /tmp because /etc/zabbix is read-only in the image.
 cat > /tmp/zabbix_agent2.conf << EOF
 ServerActive=zabbix-zabbix-server.zabbix.svc.cluster.local
 Hostname=${HOSTNAME}
