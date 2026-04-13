@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 )
 
 type healthResponse struct {
@@ -23,20 +24,40 @@ type metricsResponse struct {
 }
 
 func main() {
-	http.HandleFunc("/health", healthHandler)
-	http.HandleFunc("/metrics", metricsHandler)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/health", healthHandler)
+	mux.HandleFunc("/metrics", metricsHandler)
+	srv := &http.Server{
+		Addr:         ":8080",
+		Handler:      mux,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
+	}
 	log.Println("metrics server listening on :8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Fatal(srv.ListenAndServe())
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
-	hostname, _ := os.Hostname()
+	hostname, err := os.Hostname()
+	if err != nil {
+		log.Printf("os.Hostname: %v", err)
+		hostname = "unknown"
+	}
+	b, err := json.Marshal(healthResponse{Status: "ok", Hostname: hostname})
+	if err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(healthResponse{Status: "ok", Hostname: hostname})
+	w.Write(b)
 }
 
 func metricsHandler(w http.ResponseWriter, r *http.Request) {
-	hostname, _ := os.Hostname()
+	hostname, err := os.Hostname()
+	if err != nil {
+		log.Printf("os.Hostname: %v", err)
+		hostname = "unknown"
+	}
 	cpu, err := readCPU()
 	if err != nil {
 		http.Error(w, "failed to read cpu: "+err.Error(), http.StatusInternalServerError)
@@ -57,8 +78,7 @@ func metricsHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "failed to read uptime: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(metricsResponse{
+	b, err := json.Marshal(metricsResponse{
 		Hostname:        hostname,
 		CPUUsagePercent: cpu,
 		MemoryUsedMB:    memUsed,
@@ -67,4 +87,10 @@ func metricsHandler(w http.ResponseWriter, r *http.Request) {
 		DiskTotalGB:     diskTotal,
 		UptimeSeconds:   uptime,
 	})
+	if err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(b)
 }

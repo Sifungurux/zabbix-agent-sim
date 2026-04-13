@@ -120,9 +120,6 @@ func TestCPUPercent_ZeroDelta(t *testing.T) {
 // ── HTTP handlers (require /proc — implemented in Task 2) ─────────────────────
 
 func TestHealthHandler(t *testing.T) {
-	if _, err := os.Stat("/proc"); err != nil {
-		t.Skip("skipping: /proc not available (not Linux)")
-	}
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	w := httptest.NewRecorder()
 	healthHandler(w, req)
