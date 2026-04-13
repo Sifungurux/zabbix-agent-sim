@@ -84,20 +84,20 @@ Listens on port `8080`. Reads real values from the Linux kernel at request time.
 
 ## Zabbix Agent Config
 
-Passive checks (server polls) + active checks (agent connects to server for auto-registration):
+Active-only mode — agents connect OUT to the server and push data. No inbound polling from the server.
 
 ```
-Server=0.0.0.0/0
 ServerActive=zabbix-zabbix-server.zabbix.svc.cluster.local
 Hostname=${HOSTNAME}
 HostMetadata=zabbix-agent-sim
-ListenPort=10050
 LogType=console
 ```
 
+- `ServerActive` replaces `Server=` — the agent initiates all connections to port 10051 on the server
 - `${HOSTNAME}` is the k8s pod name — unique per replica
 - `HostMetadata=zabbix-agent-sim` is the filter used in the Zabbix auto-registration action
-- Active mode enables auto-registration; passive mode enables item polling
+- No `ListenPort` needed — agents push data, server never connects back to them
+- Scales cleanly to 200+ pods: the server handles inbound data streams rather than managing 200+ outbound polling connections
 
 ---
 
@@ -113,8 +113,7 @@ LogType=console
 
 **Service:**
 - Type: `ClusterIP`
-- Port `10050` — Zabbix passive agent checks
-- Port `8080` — HTTP metrics API
+- Port `8080` only — HTTP metrics API (no port 10050 needed, agents push outbound)
 
 ---
 
@@ -138,7 +137,7 @@ After first deploy, configure in Zabbix frontend:
 1. **Administration → General → Auto-registration** — set encryption to `No encryption`
 2. **Configuration → Actions → Auto-registration actions → Create action:**
    - Condition: `Host metadata contains zabbix-agent-sim`
-   - Operations: Add host, add to host group `Simulated Agents`, link template `Linux by Zabbix agent`
+   - Operations: Add host, add to host group `Simulated Agents`, link template `Linux by Zabbix agent active`
 
 All pods matching the metadata string will be automatically added as hosts with the Linux template applied.
 
