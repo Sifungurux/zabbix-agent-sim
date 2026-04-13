@@ -1,6 +1,9 @@
 package main
 
 import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 )
@@ -120,12 +123,51 @@ func TestHealthHandler(t *testing.T) {
 	if _, err := os.Stat("/proc"); err != nil {
 		t.Skip("skipping: /proc not available (not Linux)")
 	}
-	// TODO: filled in Task 2
+	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	w := httptest.NewRecorder()
+	healthHandler(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status: got %d, want 200", w.Code)
+	}
+	var resp healthResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if resp.Status != "ok" {
+		t.Errorf("status: got %q, want \"ok\"", resp.Status)
+	}
+	if resp.Hostname == "" {
+		t.Error("hostname must not be empty")
+	}
 }
 
 func TestMetricsHandler(t *testing.T) {
 	if _, err := os.Stat("/proc/stat"); err != nil {
 		t.Skip("skipping: /proc/stat not available (not Linux)")
 	}
-	// TODO: filled in Task 2
+	req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
+	w := httptest.NewRecorder()
+	metricsHandler(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status: got %d, want 200", w.Code)
+	}
+	var resp metricsResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if resp.CPUUsagePercent < 0 || resp.CPUUsagePercent > 100 {
+		t.Errorf("cpu_usage_percent out of range: %f", resp.CPUUsagePercent)
+	}
+	if resp.MemoryTotalMB == 0 {
+		t.Error("memory_total_mb must not be zero")
+	}
+	if resp.DiskTotalGB == 0 {
+		t.Error("disk_total_gb must not be zero")
+	}
+	if resp.UptimeSeconds <= 0 {
+		t.Error("uptime_seconds must be positive")
+	}
+	if resp.Hostname == "" {
+		t.Error("hostname must not be empty")
+	}
 }
