@@ -37,6 +37,23 @@ func parseCPUSample(content string) (cpuStats, error) {
 	return cpuStats{}, fmt.Errorf("cpu line not found in /proc/stat content")
 }
 
+// cpuPercent computes CPU usage percentage from two consecutive cpuStats samples.
+// Returns 0 if total counters did not increase or if idle regressed (counter underflow).
+func cpuPercent(s1, s2 cpuStats) float64 {
+	idle1 := s1.idle + s1.iowait
+	idle2 := s2.idle + s2.iowait
+	total1 := s1.user + s1.nice + s1.system + idle1 + s1.irq + s1.softirq + s1.steal
+	total2 := s2.user + s2.nice + s2.system + idle2 + s2.irq + s2.softirq + s2.steal
+	if total2 <= total1 {
+		return 0
+	}
+	if idle2 < idle1 {
+		return 0
+	}
+	delta := total2 - total1
+	return float64(delta-(idle2-idle1)) / float64(delta) * 100.0
+}
+
 // readCPU samples /proc/stat twice 100ms apart and returns CPU usage percent.
 func readCPU() (float64, error) {
 	sample := func() (cpuStats, error) {
@@ -55,16 +72,7 @@ func readCPU() (float64, error) {
 	if err != nil {
 		return 0, err
 	}
-	idle1 := s1.idle + s1.iowait
-	idle2 := s2.idle + s2.iowait
-	total1 := s1.user + s1.nice + s1.system + idle1 + s1.irq + s1.softirq + s1.steal
-	total2 := s2.user + s2.nice + s2.system + idle2 + s2.irq + s2.softirq + s2.steal
-	totalDelta := total2 - total1
-	idleDelta := idle2 - idle1
-	if totalDelta == 0 {
-		return 0, nil
-	}
-	return float64(totalDelta-idleDelta) / float64(totalDelta) * 100.0, nil
+	return cpuPercent(s1, s2), nil
 }
 
 // parseMemory parses /proc/meminfo content and returns (usedMB, totalMB).

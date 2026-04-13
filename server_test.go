@@ -85,6 +85,35 @@ func TestParseUptime_EmptyInput(t *testing.T) {
 	}
 }
 
+// ── cpuPercent ────────────────────────────────────────────────────────────────
+
+func TestCPUPercent_FullyBusy(t *testing.T) {
+	s1 := cpuStats{user: 1000, idle: 1000}
+	s2 := cpuStats{user: 2000, idle: 1000} // all delta is user (non-idle)
+	got := cpuPercent(s1, s2)
+	if got != 100.0 {
+		t.Errorf("got %f, want 100.0", got)
+	}
+}
+
+func TestCPUPercent_FullyIdle(t *testing.T) {
+	s1 := cpuStats{user: 1000, idle: 1000}
+	s2 := cpuStats{user: 1000, idle: 2000} // all delta is idle
+	got := cpuPercent(s1, s2)
+	if got != 0.0 {
+		t.Errorf("got %f, want 0.0", got)
+	}
+}
+
+func TestCPUPercent_ZeroDelta(t *testing.T) {
+	s1 := cpuStats{user: 1000, idle: 1000}
+	s2 := cpuStats{user: 1000, idle: 1000} // no change
+	got := cpuPercent(s1, s2)
+	if got != 0.0 {
+		t.Errorf("got %f, want 0.0", got)
+	}
+}
+
 // ── HTTP handlers (require /proc — implemented in Task 2) ─────────────────────
 
 func TestHealthHandler(t *testing.T) {
