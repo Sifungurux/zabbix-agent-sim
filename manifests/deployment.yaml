@@ -29,6 +29,20 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.name
+        - name: ZABBIX_USER
+          valueFrom:
+            secretKeyRef:
+              name: zabbix-api-credentials
+              key: username
+        - name: ZABBIX_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: zabbix-api-credentials
+              key: password
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/usr/local/bin/deregister.sh"]
         livenessProbe:
           httpGet:
             path: /health

@@ -9,11 +9,12 @@ RUN go test ./... && \
 
 # ── Stage 2: Final image ───────────────────────────────────────────────────────
 FROM alpine:3.19
-# zabbix-agent2 is in the community repo; --repository scopes it to this invocation only
-RUN apk add --no-cache zabbix-agent2 \
+# jq is in main; zabbix-agent2 is in community
+RUN apk add --no-cache jq && \
+    apk add --no-cache zabbix-agent2 \
     --repository=https://dl-cdn.alpinelinux.org/alpine/v3.19/community
 COPY --from=builder /build/metrics-server /usr/local/bin/metrics-server
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh /usr/local/bin/metrics-server
+COPY entrypoint.sh deregister.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/entrypoint.sh /usr/local/bin/deregister.sh /usr/local/bin/metrics-server
 EXPOSE 8080
-ENTRYPOINT ["/entrypoint.sh"]
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
