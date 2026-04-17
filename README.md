@@ -27,6 +27,19 @@ make scale N=20 # scale to 20 replicas
 | `make scale N=<n>` | Scale to N replicas |
 | `make status` | Show pods and live metrics from first pod |
 
+## Prerequisites: Kubernetes Secret
+
+Before deploying, create the API credentials secret (used by the preStop deregistration hook):
+
+```bash
+kubectl create secret generic zabbix-api-credentials \
+  --from-literal=username=Admin \
+  --from-literal=password=zabbix \
+  --namespace=zabbix
+```
+
+Update the password if you've changed the Zabbix Admin password.
+
 ## One-time Zabbix setup
 
 Port-forward to the Zabbix frontend:
